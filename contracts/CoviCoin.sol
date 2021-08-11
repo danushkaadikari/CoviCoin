@@ -442,10 +442,12 @@ contract CoviCoin is IBEP20, Auth {
     uint256 feeDenominator = 10000;
 
     address public autoLiquidityReceiver;
-    address public marketingWallet;
-    address public charityWallet;
+    address public marketingWallet = 0x20371ab9dD19495553B536825577982bf031B8a9;
+    address public charityWallet = 0xA2650030EC5A0e69d857f69E4aF63bF2e1E9eA00;
     uint256 marketingFees;
     uint256 expenseFees;
+    
+    uint256 public totalCharity;
 
     IDEXRouter public router;
     address public pair;
@@ -484,8 +486,6 @@ contract CoviCoin is IBEP20, Auth {
         isDividendExempt[DEAD] = true;
 
         autoLiquidityReceiver = msg.sender;
-        marketingWallet = 0x20371ab9dD19495553B536825577982bf031B8a9;
-        charityWallet = 0xA2650030EC5A0e69d857f69E4aF63bF2e1E9eA00;
 
         _balances[msg.sender] = _totalSupply;
         emit Transfer(address(0), msg.sender, _totalSupply);
@@ -646,15 +646,17 @@ contract CoviCoin is IBEP20, Auth {
 
             uint256 amountBNBReflection = amountBNB.mul(reflectionFee).div(totalFee);
             uint256 amountBNBMarketing = amountBNB.mul(marketingFee).div(totalFee);
-            uint256 amountBNBDev = amountBNB.mul(expenseFee).div(totalFee);
+            uint256 amountBNBCharity = amountBNB.mul(expenseFee).div(totalFee);
+            
+            totalCharity = totalCharity.add(amountBNBCharity);
 
             try distributor.deposit{value: amountBNBReflection}() {} catch {}
 
             (bool success, ) = payable(marketingWallet).call{value: amountBNBMarketing, gas: 30000}("");
             if(success){ marketingFees = marketingFees.add(amountBNBMarketing); }
 
-            (success, ) = payable(charityWallet).call{value: amountBNBDev, gas: 30000}("");
-            if(success){ expenseFees = expenseFees.add(amountBNBDev); }
+            (success, ) = payable(charityWallet).call{value: amountBNBCharity, gas: 30000}("");
+            if(success){ expenseFees = expenseFees.add(amountBNBCharity); }
 
             emit SwapBack(amountToSwap, amountBNB);
         }
