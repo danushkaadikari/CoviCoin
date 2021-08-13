@@ -14,7 +14,9 @@ pragma solidity ^0.7.4;
  *    $$ |  $$\$$ |  $$ |\$$$  /  $$ |$$ |  $$\$$ |  $$ |$$ |$$ |  $$ |                    $$ |  $$\   \$$$  /  $$ |  $$\ 
  *    \$$$$$$  \$$$$$$  | \$  /   $$ |\$$$$$$  \$$$$$$  |$$ |$$ |  $$ |                    \$$$$$$  |   \$  /   \$$$$$$  |
  *    \______/ \______/   \_/    \__| \______/ \______/ \__|\__|  \__|                     \______/     \_/     \______/ 
- * 
+ *  
+ *      01000011 01101111 01110110 01101001 01000011 01101111 01101001 01101110  00101101  01000011 01010110 01000011                                              
+ *      01000100 01100101 01110110 01100101 01101100 01101111 01110000 01100101 01100100  01000010 01111001  01000100 01100001 01101110 01110101 01110011 01101000 
  * 
  */
 
@@ -218,8 +220,8 @@ contract DividendDistributor is IDividendDistributor {
         uint256 totalRealised;
     }
 
-    IBEP20 BUSD = IBEP20(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
-    address WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
+    IBEP20 BUSD = IBEP20(0x8301F2213c0eeD49a7E28Ae4c3e91722919B8B47); // IBEP20(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56); // mainnet
+    address WBNB = 0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd; // 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c; // mainnet
     IDEXRouter router;
 
     address[] shareholders;
@@ -253,7 +255,8 @@ contract DividendDistributor is IDividendDistributor {
     constructor (address _router) {
         router = _router != address(0)
         ? IDEXRouter(_router)
-        : IDEXRouter(0x10ED43C718714eb63d5aA57B78B54704E256024E);
+        // : IDEXRouter(0x10ED43C718714eb63d5aA57B78B54704E256024E); // mainnet
+        :IDEXRouter(0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3); // testnet
         _token = msg.sender;
     }
 
@@ -405,8 +408,8 @@ contract DividendDistributor is IDividendDistributor {
 contract CoviCoin is IBEP20, Auth {
     using SafeMath for uint256;
 
-    address BUSD = 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56;
-    address WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
+    address BUSD = 0x8301F2213c0eeD49a7E28Ae4c3e91722919B8B47; // 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56; // mainnet
+    address WBNB = 0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd; // 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c; // mainnet
     address DEAD = 0x000000000000000000000000000000000000dEaD;
 
     string constant _name = "CoviCoin";
@@ -432,15 +435,15 @@ contract CoviCoin is IBEP20, Auth {
     uint256 buybackFee = 200;
     uint256 reflectionFee = 400;
     uint256 marketingFee = 100;
-    uint256 expenseFee = 100;
+    uint256 charityFee = 100;
     uint256 totalFee = 1000;
     uint256 feeDenominator = 10000;
 
     address public autoLiquidityReceiver;
-    address public marketingWallet = 0x20371ab9dD19495553B536825577982bf031B8a9;
+    address public expenseWallet = 0x20371ab9dD19495553B536825577982bf031B8a9;
     address public charityWallet = 0xA2650030EC5A0e69d857f69E4aF63bF2e1E9eA00;
     uint256 marketingFees;
-    uint256 expenseFees;
+    uint256 charityFees;
     
     uint256 public totalCharity;
 
@@ -467,7 +470,8 @@ contract CoviCoin is IBEP20, Auth {
     modifier swapping() { inSwap = true; _; inSwap = false; }
 
     constructor () Auth(msg.sender) {
-        router = IDEXRouter(0x10ED43C718714eb63d5aA57B78B54704E256024E);
+        // router = IDEXRouter(0x10ED43C718714eb63d5aA57B78B54704E256024E); // mainnet
+        router = IDEXRouter(0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3); // testnet
         pair = IDEXFactory(router.factory()).createPair(WBNB, address(this));
         _allowances[address(this)][address(router)] = uint256(-1);
 
@@ -641,17 +645,17 @@ contract CoviCoin is IBEP20, Auth {
 
             uint256 amountBNBReflection = amountBNB.mul(reflectionFee).div(totalFee);
             uint256 amountBNBMarketing = amountBNB.mul(marketingFee).div(totalFee);
-            uint256 amountBNBCharity = amountBNB.mul(expenseFee).div(totalFee);
+            uint256 amountBNBCharity = amountBNB.mul(charityFee).div(totalFee);
             
             totalCharity = totalCharity.add(amountBNBCharity);
 
             try distributor.deposit{value: amountBNBReflection}() {} catch {}
 
-            (bool success, ) = payable(marketingWallet).call{value: amountBNBMarketing, gas: 30000}("");
+            (bool success, ) = payable(expenseWallet).call{value: amountBNBMarketing, gas: 30000}("");
             if(success){ marketingFees = marketingFees.add(amountBNBMarketing); }
 
             (success, ) = payable(charityWallet).call{value: amountBNBCharity, gas: 30000}("");
-            if(success){ expenseFees = expenseFees.add(amountBNBCharity); }
+            if(success){ charityFees = charityFees.add(amountBNBCharity); }
 
             emit SwapBack(amountToSwap, amountBNB);
         }
@@ -751,7 +755,7 @@ contract CoviCoin is IBEP20, Auth {
         uint256 _buybackFee,
         uint256 _reflectionFee,
         uint256 _marketingFee,
-        uint256 _expenseFee,
+        uint256 _charityFee,
         uint256 _feeDenominator
     ) external authorized {
         feeEnabled = _enabled;
@@ -759,23 +763,23 @@ contract CoviCoin is IBEP20, Auth {
         buybackFee = _buybackFee;
         reflectionFee = _reflectionFee;
         marketingFee = _marketingFee;
-        expenseFee = _expenseFee;
+        charityFee = _charityFee;
 
-        totalFee = buybackFee.add(reflectionFee).add(marketingFee).add(expenseFee);
+        totalFee = buybackFee.add(reflectionFee).add(marketingFee).add(charityFee);
 
         liquidityFee = _liquidityFee;
 
         feeDenominator = _feeDenominator;
         require(totalFee.add(liquidityFee) < feeDenominator/5);
         
-        emit FeesUpdated(_enabled, _liquidityFee, _buybackFee, _reflectionFee, _marketingFee, _expenseFee, _feeDenominator);
+        emit FeesUpdated(_enabled, _liquidityFee, _buybackFee, _reflectionFee, _marketingFee, _charityFee, _feeDenominator);
     }
 
-    function setFeeReceivers(address _autoLiquidityReceiver, address _marketingWallet, address _charityWallet) external authorized {
+    function setFeeReceivers(address _autoLiquidityReceiver, address _expenseWallet, address _charityWallet) external authorized {
         autoLiquidityReceiver = _autoLiquidityReceiver;
-        marketingWallet = _marketingWallet;
+        expenseWallet = _expenseWallet;
         charityWallet = _charityWallet;
-        emit FeeReceiversUpdated(_autoLiquidityReceiver, _marketingWallet, _charityWallet);
+        emit FeeReceiversUpdated(_autoLiquidityReceiver, _expenseWallet, _charityWallet);
     }
 
     function setSwapBackSettings(bool _enabled, uint256 _amount) external authorized {
@@ -801,7 +805,7 @@ contract CoviCoin is IBEP20, Auth {
     }
 
     function getAccumulatedFees() external view returns (uint256, uint256) {
-        return (marketingFees, expenseFees);
+        return (marketingFees, charityFees);
     }
 
     function getAutoBuybackSettings() external view returns (bool,uint256,uint256,uint256,uint256,uint256) {
@@ -836,7 +840,7 @@ contract CoviCoin is IBEP20, Auth {
             buybackFee,
             reflectionFee,
             marketingFee,
-            expenseFee,
+            charityFee,
             liquidityFee,
             feeDenominator
         );
@@ -851,7 +855,7 @@ contract CoviCoin is IBEP20, Auth {
     event DividendExemptUpdated(address holder, bool exempt);
     event FeeExemptUpdated(address holder, bool exempt);
     event TxLimitExemptUpdated(address holder, bool exempt);
-    event FeesUpdated(bool enabled, uint256 liquidityFee, uint256 buybackFee, uint256 reflectionFee, uint256 marketingFee, uint256 expenseFee, uint256 feeDenominator);
+    event FeesUpdated(bool enabled, uint256 liquidityFee, uint256 buybackFee, uint256 reflectionFee, uint256 marketingFee, uint256 charityFee, uint256 feeDenominator);
     event FeeReceiversUpdated(address autoLiquidityReceiver, address marketingFeeReceiver, address devFeeReceiver);
     event SwapBackSettingsUpdated(bool enabled, uint256 amount);
     event AutoLiquifyUpdated(bool enabled);
