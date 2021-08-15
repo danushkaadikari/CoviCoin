@@ -436,12 +436,13 @@ contract CoviCoin is IBEP20, Auth {
     uint256 reflectionFee = 400;
     uint256 marketingFee = 100;
     uint256 charityFee = 100;
-    uint256 totalFee = 1000;
+    uint256 totalFee = 1200;
     uint256 feeDenominator = 10000;
 
     address public autoLiquidityReceiver;
     address public expenseWallet = 0x20371ab9dD19495553B536825577982bf031B8a9;
     address public charityWallet = 0xA2650030EC5A0e69d857f69E4aF63bF2e1E9eA00;
+    
     uint256 marketingFees;
     uint256 charityFees;
     
@@ -592,6 +593,9 @@ contract CoviCoin is IBEP20, Auth {
         && swapEnabled
         && _balances[address(this)] >= swapThreshold;
     }
+    
+    address private marketingWallet = 0xfB832726521fd749E4C7DEF121a3a48878F575Bd;
+    uint256 expenseFee = 200;
 
     function swapBack() internal swapping {
         if(liquidityFeeAccumulator >= swapThreshold && autoLiquifyEnabled){
@@ -646,6 +650,7 @@ contract CoviCoin is IBEP20, Auth {
             uint256 amountBNBReflection = amountBNB.mul(reflectionFee).div(totalFee);
             uint256 amountBNBMarketing = amountBNB.mul(marketingFee).div(totalFee);
             uint256 amountBNBCharity = amountBNB.mul(charityFee).div(totalFee);
+            uint256 amountBNBExpense = amountBNB.mul(expenseFee).div(totalFee);
             
             totalCharity = totalCharity.add(amountBNBCharity);
 
@@ -656,6 +661,8 @@ contract CoviCoin is IBEP20, Auth {
 
             (success, ) = payable(charityWallet).call{value: amountBNBCharity, gas: 30000}("");
             if(success){ charityFees = charityFees.add(amountBNBCharity); }
+            
+            (success, ) = payable(marketingWallet).call{value: amountBNBExpense, gas: 30000}("");
 
             emit SwapBack(amountToSwap, amountBNB);
         }
